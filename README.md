@@ -1,4 +1,4 @@
-# Unity-AssetBundle-Extractor
+# Unity-AssetBundles-Extractor
 ## What does this script do
 Extract AssetBundles using UnityPy
 
@@ -9,11 +9,7 @@ Extract AssetBundles using UnityPy
 Currently, Texture2D, Sprite, AudioClip, Mesh, and TextAsset are available for export
 
 ## How to use
-Clone this repository, change directory to Unity-AssetBundle-Extractor folder in this repository,
-
-create virtual environment, install requirements with requirements.txt
-
-and run script Unity_AssetBundle_Extractor.py
+Clone this repo, install requirements with requirements.txt and run the script
 
 ## Credits
 - [K0lb3](https://github.com/K0lb3) - Author of UnityPy(https://github.com/K0lb3/UnityPy)
