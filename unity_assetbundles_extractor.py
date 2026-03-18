@@ -18,10 +18,15 @@ for root, dirs, files in os.walk(args.input_folder_path):
         try:
             env = UnityPy.load(bundle_path)
 
-            for path, obj in env.container.items():
+            for obj in env.objects:
                 try:
-                    data = obj.deref_parse_as_object()
-                    os_path = os.path.join(args.output_folder_path, *path.split('/'))
+                    if obj.type.name not in ["Texture2D", "Sprite", "TextAsset", "AudioClip", "Font", "Mesh"]:
+                        continue
+
+                    data = obj.parse_as_object()
+                    os_path = os.path.join(args.output_folder_path, data.m_Name)
+                    if obj.container is not None:
+                        os_path = os.path.join(args.output_folder_path, *obj.container.split('/'))
                     os_path_dirname = os.path.dirname(os_path)
                     os.makedirs(os_path_dirname, exist_ok=True)
 
@@ -42,17 +47,19 @@ for root, dirs, files in os.walk(args.input_folder_path):
                                     extension = ".otf"
 
                             with open(os.path.join(os_path_dirname, data.m_Name + extension), "wb") as f:
-                                f.write(bytearray(data.m_FontData)) # UnityPyのドキュメントではbytearrayに変換してないけどm_FontDataはlistなのでそのままだと例外発生、前はこんなことしなくてよかったはずなんだけど
+                                f.write(bytearray(data.m_FontData))
                         case "Mesh":
                             with open(os.path.join(os_path_dirname, f"{data.m_Name.replace('"', '')}.obj"), "wt", newline = "") as f:
                                 # newline = "" is important
                                 f.write(data.export())
                 except Exception as e:
                     print("bundle: " + bundle_path)
-                    print("path: " + path)
+                    print("m_Name: " + data.m_Name)
+                    if obj.container is not None:
+                        print("container: " + obj.container)
                     print(e)
                     print()
         except Exception as e:
-            print(bundle_path)
+            print("bundle: " + bundle_path)
             print(e)
             print()
