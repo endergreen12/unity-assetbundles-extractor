@@ -1,59 +1,58 @@
 import UnityPy
-import glob
+import argparse
 import os
 
-from UnityPy.classes import AudioClip, Mesh, TextAsset
+parser = argparse.ArgumentParser(
+    usage=f"python {os.path.basename(__file__)} <input_folder_path> <output_folder_path>",
+    add_help=True
+)
 
-required_unitypy_version = '1.20.17'
-if UnityPy.__version__ != required_unitypy_version:
-    raise ImportError(f"Invalid UnityPy version detected. Please use version {required_unitypy_version}")
+parser.add_argument("input_folder_path", type=str, help="Path to input folder")
+parser.add_argument("output_folder_path", type=str, help="Path to output folder")
 
-export_target_type_array = ["Texture2D", "Sprite", "AudioClip", "Mesh", "TextAsset"]
+args = parser.parse_args()
 
-path = input("Enter the path that contains AssetBundles: ").replace("\"", "")
-output_path = input("Enter the path to output: ").replace("\"", "")
-UnityPy.config.FALLBACK_UNITY_VERSION = input("Enter the version for fallback: ")
-print("Copying start")
-print("If an exception occurs during copying, the log is displayed but the process is not aborted")
-print()
-
-for bundle_path in glob.glob(os.path.join(path, "*")):
-    env = UnityPy.load(bundle_path)
-    
-    for path, obj in env.container.items():
+for root, dirs, files in os.walk(args.input_folder_path):
+    for file in files:
+        bundle_path = os.path.join(root, file)
         try:
-            if not obj.type.name in export_target_type_array:
-                continue
-            
-            full_path_dir_str = os.path.join(output_path, *path.split("/")[:-1]) # ファイル名を除いたフルパス
-            os.makedirs(full_path_dir_str, exist_ok=True) # フォルダを作る
-            
-            data = obj.read()
-            match obj.type.name:
-                case "Texture2D" | "Sprite":
-                    data.image.save(os.path.join(full_path_dir_str, data.m_Name + ".png")) # 拡張子がPSDだと例外が出るのでsplitextで拡張子をのぞいたパスに.pngをくっつけて保存
-                    
-                case "AudioClip":
-                    for name, audio_data in data.samples.items():
-                        with open(os.path.join(full_path_dir_str, name), "wb") as f:
-                            f.write(audio_data)
-                        
-                case "Mesh":
-                    with open(os.path.join(full_path_dir_str, f"{data.m_Name}.obj"), "wt", newline = "") as f:
-                        # newline = "" is important
-                        f.write(data.export())
-                        
-                case "TextAsset":
-                    with open(os.path.join(full_path_dir_str, data.m_Name), "wb") as f:
-                        f.write(data.m_Script.encode("utf-8", "surrogateescape"))
-                    
+            env = UnityPy.load(bundle_path)
+
+            for path, obj in env.container.items():
+                try:
+                    data = obj.deref_parse_as_object()
+                    os_path = os.path.join(args.output_folder_path, *path.split('/'))
+                    os_path_dirname = os.path.dirname(os_path)
+                    os.makedirs(os_path_dirname, exist_ok=True)
+
+                    match obj.type.name:
+                        case "Texture2D" | "Sprite":
+                            data.image.save(os.path.splitext(os_path)[0] + ".png")
+                        case "TextAsset":
+                            with open(os.path.join(os_path_dirname, data.m_Name), "wb") as f:
+                                f.write(data.m_Script.encode("utf-8", "surrogateescape"))
+                        case "AudioClip":
+                            for name, clip_data in data.samples.items():
+                                with open(os.path.join(os_path_dirname, name), "wb") as f:
+                                    f.write(clip_data)
+                        case "Font":
+                            if data.m_FontData:
+                                extension = ".ttf"
+                                if data.m_FontData[0:4] == b"OTTO":
+                                    extension = ".otf"
+
+                            with open(os.path.join(os_path_dirname, data.m_Name + extension), "wb") as f:
+                                f.write(bytearray(data.m_FontData)) # UnityPyのドキュメントではbytearrayに変換してないけどm_FontDataはlistなのでそのままだと例外発生、前はこんなことしなくてよかったはずなんだけど
+                        case "Mesh":
+                            with open(os.path.join(os_path_dirname, f"{data.m_Name.replace('"', '')}.obj"), "wt", newline = "") as f:
+                                # newline = "" is important
+                                f.write(data.export())
+                except Exception as e:
+                    print("bundle: " + bundle_path)
+                    print("path: " + path)
+                    print(e)
+                    print()
         except Exception as e:
-            print(f"Exception occurred while exporting {data.m_Name}")
-            if hasattr(env, "file"):
-                print(f"Bundle file name: {env.file.name}")
-            print(f"Asset type: {obj.type.name}")
-            print("Exception details:")
+            print(bundle_path)
             print(e)
             print()
-            
-print("Done")
