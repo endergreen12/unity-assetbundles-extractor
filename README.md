@@ -16,4 +16,4 @@ python unity_assetbundles_extractor.py <input_folder_path> <output_folder_path>
 ```
 
 ## Credits
-- [K0lb3](https://github.com/K0lb3) - Author of UnityPy(https://github.com/K0lb3/UnityPy)
+- [K0lb3](https://github.com/K0lb3) - Author of [UnityPy](https://github.com/K0lb3/UnityPy)
